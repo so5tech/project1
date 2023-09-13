@@ -7,16 +7,18 @@ Original file is located at
     https://colab.research.google.com/drive/1QbNmFOGhgGuA7ypbbRBmTP2UDopL_GzW
 """
 
-from google.colab import drive
+# from google.colab import drive
+!7z x data.zip
 
-drive.mount('/content/drive')
+# drive.mount('/content/drive')
 
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 
-rawData = pd.read_csv('/content/drive/MyDrive/data/data.csv')
+# rawData = pd.read_csv('/content/drive/MyDrive/data/data.csv')
+rawData = pd.read_csv('data.csv')
 
-#data preprocessing 
+#data preprocessing
 #removing column 1 and 2(making InfoData)
 rawData1_=rawData.iloc[:3616,:]
 rawData2_=rawData.iloc[3617:,:]
@@ -34,14 +36,37 @@ data = rawData.drop(['FLAG', 'CONS_NO'], axis=1)   #axis 1 column ,axis 0 row
 # print(infoData)
 
 #droping duplicate row
-dropIndex = data[data.duplicated()].index  # duplicates drop
+dropIndex = data[data.duplicated() ].index  # duplicates drop
+
 data = data.drop(dropIndex, axis=0)   #droping duplicate value present wen two row are same
 infoData = infoData.drop(dropIndex, axis=0) #droping duplicate index infodata
 
 #removing row with all zero(Nan) value
 zeroIndex = data[(data.sum(axis=1) == 0)].index  # zero rows drop
-data = data.drop(zeroIndex, axis=0) 
-infoData = infoData.drop(zeroIndex, axis=0)  
+
+# zeroIndex = data[((data == 0).astype(int).sum(axis=1)>600)] #Greater than 600 zero rows drop
+
+zeroIndex1 = (data == 0).astype(int).sum(axis=1)
+zeroIndex2 = (data != 0).astype(int).sum(axis=1)
+
+z = pd.DataFrame()
+
+z['z_col']=zeroIndex1
+z['nz_col']=zeroIndex2
+z['T_col']=z.sum(axis =1)
+print(z.isna().sum().sum())
+print(z)
+
+
+
+
+# z=pd.merge(zeroIndex1, zeroIndex2,left_index=True,right_index=True)
+# df.merge(pd.DataFrame(data = [s.values] * len(s), columns = s.index), left_index=True, right_index=True)
+# print(z)
+
+
+data = data.drop(zeroIndex, axis=0)
+infoData = infoData.drop(zeroIndex, axis=0)
 
 #change column name to dates(2014/1/1 to 2014-01-01)
 data.columns = pd.to_datetime(data.columns)  #columns reindexing according to dates
@@ -54,16 +79,32 @@ cols = data.columns
 data.reset_index(inplace=True, drop=True)  # index sorting
 infoData.reset_index(inplace=True, drop=True)
 
-#filling nan value using neighbouring value (middle missing value replace by average 
+#filling nan value using neighbouring value (middle missing value replace by average
 #and other by maximum 2 distance element)
-data = data.interpolate(method='linear', limit=7, limit_direction='both', axis=0).fillna(0) 
-
+data = data.interpolate(method='linear', limit=7, limit_direction='both', axis=0).fillna(0)
+# print("NAN after interpolation")
+# print(data.isna().sum().sum())
 
 #removing erronoues value(fixing outliers)
-for i in range(data.shape[0]):  # outliers treatment
-    m = data.loc[i].mean()
-    st = data.loc[i].std()
-    data.loc[i] = data.loc[i].mask(data.loc[i] > (m + 2 * st), other=m + 2 * st)
+# for i in range(data.shape[0]):  # outliers treatment
+#     m = data.loc[i].mean()
+#     st = data.loc[i].std()
+#     a = False
+
+#     data.loc[i] = data.loc[i].mask(data.loc[i] > (m + 3 * st), other=m + 3 * st)
+
+print(rawData1_.isna().sum().sum())
+print(data.isna().sum().sum())
+# from google.colab import drive
+# drive.mount('/content/drive')
+
+# !pip install dataframe_image
+# rawData1_.head(10)
+rawData1_.describe()
+# import dataframe_image as dfi
+# dfi.export(r1, 'r1.png',chrome_path='/content/drive/r1.png',max_cols=25)
+
+import matplotlib.pyplot as plt
 
 # save preprocessed data without scaling
 data.to_csv(r'visualization.csv', index=False, header=True)  # preprocessed data without scaling
@@ -74,15 +115,34 @@ scaled = scale.fit_transform(data.values.T).T
 mData = pd.DataFrame(data=scaled, columns=data.columns)
 preprData = pd.concat([infoData, mData], axis=1, sort=False)  # Back to initial format
 print("Noramalised data")
-print(preprData)
+
+# print(preprData)
 
 # save preprocessed data after scaling
 preprData.to_csv(r'preprocessedR.csv', index=False, header=True)
 
+rawData = pd.read_csv('preprocessedR.csv')
+
+# Setting the target and dropping the unnecessary columns
+y = rawData[['FLAG']]
+X = rawData.drop(['FLAG', 'CONS_NO'], axis=1)
+
+# plt.scatter(X,y , s=50)
+# plt.show()
+
+"""# New Section"""
+
+pwd
+
+# from google.colab import drive
+# drive.mount('/content/drive')
+
+# Commented out IPython magic to ensure Python compatibility.
+from imblearn import over_sampling
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, mean_absolute_error, mean_squared_error, confusion_matrix, \
-    precision_recall_fscore_support, roc_auc_score
+    precision_recall_fscore_support, roc_auc_score, roc_curve
 from keras import Sequential
 
 # import keras
@@ -91,6 +151,12 @@ from keras import Sequential
 # from keras.layers import LeakyReLU,PReLU,ELU
 # from keras.layers import Dropout
 
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+# %matplotlib inline
+import seaborn as sns
+
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.python.keras.layers import Dense, Conv1D, Flatten, Conv2D
@@ -98,15 +164,19 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
+from sklearn.ensemble import GradientBoostingClassifier
 import numpy as np
 from sklearn.model_selection import GridSearchCV
 from imblearn.over_sampling import SMOTE
 
 tf.random.set_seed(1234)
-epochs_number = 1  # number of epochs for the neural networks
+epochs_number = 40  # number of epochs for the neural networks
 test_set_size = 0.2  # percentage of the test size comparing to the whole dataset
-oversampling_flag = 0  # set to 1 to over-sample the minority class
+oversampling_flag = 1  # set to 1 to over-sample the minority class
 oversampling_percentage = 0.2  # percentage of the minority class after the oversampling comparing to majority class
+
+
+
 
 
 # Definition of functions
@@ -116,7 +186,9 @@ def read_data():
     # Setting the target and dropping the unnecessary columns
     y = rawData[['FLAG']]
     X = rawData.drop(['FLAG', 'CONS_NO'], axis=1)
-    
+    # print(X)
+    # DF11 = pd.DataFrame(X)
+    # DF11.to_csv('d.csv')
     print('Normal Consumers:                    ', y[y['FLAG'] == 0].count()[0])
     print('Consumers with Fraud:                ', y[y['FLAG'] == 1].count()[0])
     print('Total Consumers:                     ', y.shape[0])
@@ -127,28 +199,69 @@ def read_data():
     X = X.reindex(X.columns, axis=1)
 
     # Splitting the dataset into training set and test set
-    X_train, X_test, y_train, y_test = train_test_split(X, y['FLAG'], test_size=test_set_size, random_state=0)
-    print("Test set assuming no fraud:           %.2f" % (y_test[y_test == 0].count() / y_test.shape[0] * 100), "%\n")
+    # X_train, X_test, y_train, y_test = train_test_split(X, y['FLAG'], test_size=test_set_size, random_state=0)
+    # print("Test set assuming no fraud:           %.2f" % (y_test[y_test == 0].count() / y_test.shape[0] * 100), "%\n")
 
     # Oversampling of minority class to encounter the imbalanced learning
-    if oversampling_flag == 1:
-        over = SMOTE(sampling_strategy=oversampling_percentage, random_state=0)
-        X_train, y_train = over.fit_resample(X_train, y_train)
-        print("Oversampling statistics in training set: ")
-        print('Normal Consumers:                    ', y_train[y_train == 0].count())
-        print('Consumers with Fraud:                ', y_train[y_train == 1].count())
-        print("Total Consumers                      ", X_train.shape[0])
+    # if oversampling_flag == 1:
+        # from imblearn.combine import SMOTETomek
+        # smtom = SMOTETomek(random_state=139)
+        # X_train, y_train = smtom.fit_resample(X_train, y_train)
+
+        # from imblearn.combine import SMOTEENN
+        # SMOTEENN = SMOTEENN()
+        # X_train, y_train = SMOTEENN.fit_resample(X_train, y_train)
+
+        # from imblearn.over_sampling import KMeansSMOTE
+        # sm = KMeansSMOTE(random_state=42,cluster_balance_threshold=0.08)
+        # X_train, y_train = sm.fit_resample(X_train, y_train)
+
+        # over = SMOTE(sampling_strategy=oversampling_percentage, random_state=0)
+        # X_train, y_train = over.fit_resample(X_train, y_train)
+
+        # print("Oversampling statistics in training set: ")
+        # print('Normal Consumers:                    ', y_train[y_train == 0].count())
+        # print('Consumers with Fraud:                ', y_train[y_train == 1].count())
+        # print("Total Consumers                      ", X_train.shape[0])
+
+    # if oversampling_flag_st == 1:
+    #   from imblearn.combine import SMOTETomek
+
+    #   counter = Counter(y_train)
+    #   print('Before',counter)
+      # oversampling the train dataset using SMOTE + Tomek
+      # smtom = SMOTETomek(random_state=139)
+      # X_train, y_train = smtom.fit_resample(X_train, y_train)
+
+    #   counter = Counter(y_train_smtom)
+    #   print('After',counter)
 
     return X_train, X_test, y_train, y_test
 
 
 def results(y_test, prediction):
     print("Accuracy", 100 * accuracy_score(y_test, prediction))
-    # print("RMSE:", mean_squared_error(y_test, prediction, squared=False))
-    # print("MAE:", mean_absolute_error(y_test, prediction))
-    # print("F1:", 100 * precision_recall_fscore_support(y_test, prediction)[2])
+    print("RMSE:", mean_squared_error(y_test, prediction, squared=False))
+    print("MAE:", mean_absolute_error(y_test, prediction))
+    print("F1:", 100 * precision_recall_fscore_support(y_test, prediction)[2])
     print("AUC:", 100 * roc_auc_score(y_test, prediction))
-    # print(confusion_matrix(y_test, prediction), "\n")
+    print(confusion_matrix(y_test, prediction), "\n")
+
+    from sklearn.metrics import roc_curve, auc
+
+    fpr, tpr, threshold = roc_curve(y_test, prediction)
+    auc = auc(fpr, tpr)
+
+    plt.figure(figsize=(5, 5), dpi=100)
+
+    plt.plot(fpr, tpr, marker='.', label='Logistic (auc = %0.3f)' % auc)
+
+    plt.xlabel('False Positive Rate -->')
+    plt.ylabel('True Positive Rate -->')
+
+    plt.legend()
+
+    plt.show()
 
 
 def ANN(X_train, X_test, y_train, y_test):
@@ -171,10 +284,57 @@ def ANN(X_train, X_test, y_train, y_test):
 
     # model.fit(X_train, y_train, validation_split=0, epochs=i, shuffle=True, verbose=0)
     model.fit(X_train, y_train, validation_split=0, epochs=epochs_number, shuffle=True, verbose=1)
+    # DF1 = pd.DataFrame(X_test)
+    # DF1.to_csv("data2.csv")
     prediction = model.predict(X_test)
+    # DF = pd.DataFrame(prediction)
+    # DF.to_csv("data1.csv")
     prediction = (prediction>0.5) #for convertion of pridected value into true(1) or false(0)
+
+
+#     pred=[]
+# # for model in [rf_model,log_classifier,ada_classifier,knn_classifier]:
+#     pred.append(pd.Series(model.predict(X_test)[:,1]))
+#     final_prediction=pd.concat(pred,axis=1).mean(axis=1)
+#     print('Ensemble test roc-auc: {}'.format(roc_auc_score(y_test,final_prediction)))
+
+#     pd.concat(pred,axis=1)
+
+#     pd.concat(pred,axis=1)
+
+#     fpr, tpr, thresholds = roc_curve(y_test, final_prediction)
+#     thresholds
+
+#     from sklearn.metrics import accuracy_score
+#     accuracy_ls = []
+#     for thres in thresholds:
+#         y_pred = np.where(final_prediction>thres,1,0)
+#         accuracy_ls.append(accuracy_score(y_test, y_pred, normalize=True))
+
+#     accuracy_ls = pd.concat([pd.Series(thresholds), pd.Series(accuracy_ls)],
+#                             axis=1)
+#     accuracy_ls.columns = ['thresholds', 'accuracy']
+#     accuracy_ls.sort_values(by='accuracy', ascending=False, inplace=True)
+#     accuracy_ls.head()
+
+#     accuracy_ls
+
+#     def plot_roc_curve(fpr, tpr):
+#         plt.plot(fpr, tpr, color='orange', label='ROC')
+#         plt.plot([0, 1], [0, 1], color='darkblue', linestyle='--')
+#         plt.xlabel('False Positive Rate')
+#         plt.ylabel('True Positive Rate')
+#         plt.title('Receiver Operating Characteristic (ROC) Curve')
+#         plt.legend()
+#         plt.show()
+#     plot_roc_curve(fpr,tpr)
+
+
+
     model.summary()
     results(y_test, prediction)
+
+
 
 
 def CNN1D(X_train, X_test, y_train, y_test):
@@ -197,11 +357,18 @@ def CNN1D(X_train, X_test, y_train, y_test):
                   optimizer='adam',
                   metrics=['accuracy'])
 
+    # return model
     # model.fit(X_train, y_train, epochs=1, validation_split=0.1, shuffle=False, verbose=1)
     model.fit(X_train, y_train, epochs=epochs_number, validation_split=0, shuffle=False, verbose=1)
     # prediction = model.predict_classes(X_test)
     prediction = model.predict(X_test)
-    prediction = (prediction>0.5)
+    # (prediction==True).to_csv(r'prediction.csv')
+    print(prediction)
+    # prediction.describe()
+    prediction = (prediction<0.6)
+
+
+
     model.summary()
     results(y_test, prediction)
 
@@ -211,7 +378,7 @@ def CNN1D(X_train, X_test, y_train, y_test):
 def LR(X_train, X_test, y_train, y_test):
     print('Logistic Regression:')
     '''
-    # Parameters selection 
+    # Parameters selection
     param_grid = {'C': [0.1,1,10,100],'solver': ['newton-cg', 'lbfgs']}
     grid = GridSearchCV(LogisticRegression(max_iter=1000,random_state=0), param_grid=param_grid, n_jobs=-1)
     grid.fit(X_train, y_train)
@@ -235,7 +402,7 @@ def DT(X_train, X_test, y_train, y_test):
 def RF(X_train, X_test, y_train, y_test):
     print('Random Forest:')
     '''
-    # Parameters selection 
+    # Parameters selection
     param_grid = {'n_estimators':[10,100,1000]}
     grid = GridSearchCV(RandomForestClassifier(random_state=0), param_grid=param_grid, n_jobs=-1)
     grid.fit(X_train, y_train)
@@ -243,22 +410,36 @@ def RF(X_train, X_test, y_train, y_test):
     print(df[['param_criterion', 'mean_test_score', 'rank_test_score']])
     '''
 
-    model = RandomForestClassifier(n_estimators=100, min_samples_leaf=1, max_features='auto',  # max_depth=10,
-                                   random_state=0, n_jobs=-1)
-    model.fit(X_train, y_train)
-    prediction = model.predict(X_test)
+    # model = RandomForestClassifier(n_estimators=100, min_samples_leaf=1, max_features='auto',  # max_depth=10,
+                                  #  random_state=0, n_jobs=-1)
+    rf = RandomForestClassifier(n_estimators=15,random_state=0,criterion='gini',min_samples_split=7)
+    rf.fit(X_train, y_train)
+    # model.fit(X_train, y_train)
+    # prediction = model.predict(X_test)
+    prediction = rf.predict(X_test)
     results(y_test, prediction)
 
 
 def SVM(X_train, X_test, y_train, y_test):
-    model = SVC(random_state=0)
+    # model = SVC(random_state=0)
+    # model.fit(X_train, y_train)
+    # prediction = model.predict(X_test)
+    # results(y_test, prediction)
+    # svm = SVC( random_state=0,gamma = 0.1, kernel='rbf',C=1,probability=True)
+    svm = SVC()
+    svm.fit(X_train, y_train)
+    prediction = svm.predict(X_test)
+    results(y_test, prediction)
+    # return prediction
+def gbdt(X_train, X_test, y_train, y_test):
+    model = GradientBoostingClassifier(n_estimators=180, max_depth=9, learning_rate=0.01)
     model.fit(X_train, y_train)
     prediction = model.predict(X_test)
     results(y_test, prediction)
 
 
 # ----Main----
-X_train, X_test, y_train, y_test = read_data()
+# X_train, X_test, y_train, y_test = read_data()
 
 # Uncomment any model to test
 # ANN(X_train, X_test, y_train, y_test)
@@ -266,13 +447,67 @@ X_train, X_test, y_train, y_test = read_data()
 # RF(X_train, X_test, y_train, y_test)
 # LR(X_train, X_test, y_train, y_test)
 # DT(X_train, X_test, y_train, y_test)
-SVM(X_train, X_test, y_train, y_test)
+# SVM(X_train, X_test, y_train, y_test)
+# gbdt(X_train, X_test, y_train, y_test)
+
+
+# prediction = SVM(X_train, X_test, y_train, y_test)
+# type(prediction)
+
+# DF11 = pd.DataFrame(y_test)
+# DF11.to_csv("data3.csv")
+# RF(X_train, X_test, y_train, y_test)
+# LR(X_train, X_test, y_train, y_test)
+# DT(X_train, X_test, y_train, y_test)
+# SVM(X_train, X_test, y_train, y_test)
+# gbdt(X_train, X_test, y_train, y_test)
+
+# pred=[]
+# # for model in [rf_model,log_classifier,ada_classifier,knn_classifier]:
+# pred.append(pd.Series(model.predict_proba(X_test)[:,1]))
+# final_prediction=pd.concat(pred,axis=1).mean(axis=1)
+# print('Ensemble test roc-auc: {}'.format(roc_auc_score(y_test,final_prediction)))
+
+# pd.concat(pred,axis=1)
+
+# pd.concat(pred,axis=1)
+
+# fpr, tpr, thresholds = roc_curve(y_test, final_prediction)
+# thresholds
+
+# from sklearn.metrics import accuracy_score
+# accuracy_ls = []
+# for thres in thresholds:
+#     y_pred = np.where(final_prediction>thres,1,0)
+#     accuracy_ls.append(accuracy_score(y_test, y_pred, normalize=True))
+
+# accuracy_ls = pd.concat([pd.Series(thresholds), pd.Series(accuracy_ls)],
+#                         axis=1)
+# accuracy_ls.columns = ['thresholds', 'accuracy']
+# accuracy_ls.sort_values(by='accuracy', ascending=False, inplace=True)
+# accuracy_ls.head()
+
+# accuracy_ls
+
+# def plot_roc_curve(fpr, tpr):
+#     plt.plot(fpr, tpr, color='orange', label='ROC')
+#     plt.plot([0, 1], [0, 1], color='darkblue', linestyle='--')
+#     plt.xlabel('False Positive Rate')
+#     plt.ylabel('True Positive Rate')
+#     plt.title('Receiver Operating Characteristic (ROC) Curve')
+#     plt.legend()
+#     plt.show()
+# plot_roc_curve(fpr,tpr)
+
+# DF = pd.DataFrame(prediction)
+# DF.to_csv("data1.csv")
+# DF1.to_excel("data1.csv")
 
 def Combined(X_train, X_test, y_train, y_test):
   print('2D - Convolution Neural Network:')
   # Transforming every row of the train set into a 2D array and then into a tensor
   n_array_X_train = X_train.to_numpy()
-  n_array_X_train_extended = np.hstack((n_array_X_train, np.zeros((n_array_X_train.shape[0],2)))) # adding two empty columns in order to make the number of columns 
+  n_array_X_train_extended = np.hstack((n_array_X_train, np.zeros((n_array_X_train.shape[0],2)))) # adding two empty columns in order to make the number of columns
   # an exact multiple of 7
   week = []
   for i in range(n_array_X_train_extended.shape[0]):
@@ -296,6 +531,7 @@ def Combined(X_train, X_test, y_train, y_test):
   model1.add(Dense(64, activation='relu'))
   model1.add(Dense(1, activation='relu'))
   model1.compile(loss=keras.losses.binary_crossentropy,optimizer='adam' ,metrics = ['accuracy'])
+  # return model2
   model1.fit(X_train_reshaped, y_train, validation_split=0.1, epochs=epochs_number, shuffle=False, verbose=1)
   prediction1 = model1.predict(X_test_reshaped)
   # prediction1 = (prediction1>0.5)
@@ -315,8 +551,9 @@ def Combined(X_train, X_test, y_train, y_test):
   model2.compile(loss=keras.losses.binary_crossentropy,optimizer='adam' ,metrics = ['accuracy'])
   model2.fit(X_train, y_train, validation_split=0,epochs=epochs_number, shuffle=False, verbose=1)
   prediction2 = model2.predict(X_test)
-  # prediction2 = (prediction2>0.5) 
+  # prediction2 = (prediction2>0.5)
   return prediction1 ,prediction2
+
 
 
 def deep_and_wideCNN(prediction1, prediction2):
@@ -330,6 +567,384 @@ def deep_and_wideCNN(prediction1, prediction2):
 # prediction1, prediction2 =Combined(X_train, X_test, y_train, y_test)
 # deep_and_wideCNN(prediction1 , prediction2)
 
+from pandas.core.common import random_state
+import pandas as pd
+import numpy as np
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.svm import SVC
+from sklearn.svm import SVR
+from sklearn import tree
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+
+
+
+rawData = pd.read_csv('preprocessedR.csv')
+
+# Setting the target and dropping the unnecessary columns
+y = rawData[['FLAG']]
+X = rawData.drop(['FLAG', 'CONS_NO'], axis=1)
+# print(X)
+# DF11 = pd.DataFrame(X)
+# DF11.to_csv('d.csv')
+print('Normal Consumers:                    ', y[y['FLAG'] == 0].count()[0])
+print('Consumers with Fraud:                ', y[y['FLAG'] == 1].count()[0])
+print('Total Consumers:                     ', y.shape[0])
+print("Classification assuming no fraud:     %.2f" % (y[y['FLAG'] == 0].count()[0] / y.shape[0] * 100), "%")
+
+# columns reindexing according to dates
+X.columns = pd.to_datetime(X.columns)
+X = X.reindex(X.columns, axis=1)
+
+# X_train, X_test, y_train, y_test = train_test_split(X, y['FLAG'], test_size=0.2, random_state=0)
+
+# train , val_train , test , val_test =train_test_split(X, y['FLAG'],test_size = .50 , random_state =30)
+# x_train, x_test, y_train, y_test = train_test_split(train, test, test_size=0.2, random_state =30)
+
+from imblearn.combine import SMOTETomek
+# smtom = SMOTETomek(random_state=139)
+# X, y['FLAG'] = smtom.fit_resample(X, y['FLAG'])
+from imblearn.under_sampling import NeighbourhoodCleaningRule
+from imblearn.under_sampling import TomekLinks
+# from imblearn.under_sampling import NearMiss
+# nm1 = NearMiss(version=1)
+# X_resampled_nm1, y_resampled = nm1.fit_resample(X, y)
+
+from imblearn.over_sampling import ADASYN
+#  sm = ADASYN()
+#  X, y = sm.fit_sample(X, y)
+
+
+
+# from imblearn.over_sampling import KMeansSMOTE
+# sm = KMeansSMOTE(random_state=42,cluster_balance_threshold=0.04)
+# X, y['FLAG'] = sm.fit_resample(X, y['FLAG'])
+
+
+
+train , xval_test , test , yval_test =train_test_split(X, y['FLAG'],test_size = .20 , random_state =30)
+
+print("Oversampling statistics in training set: ")
+print('Normal Consumers:                    ',test[test == 0].count())
+print('Consumers with Fraud:                ', test[test == 1].count())
+print("Total Consumers                      ", train.shape[0])
+
+sm = ADASYN(random_state=42)
+# us = TomekLinks()
+
+train, test = sm.fit_resample(train, test)
+# train, test = us.fit_resample(train, test)
+
+print("Oversampling statistics in training set: ")
+print('Normal Consumers:                    ', test[test == 0].count())
+print('Consumers with Fraud:                ', test[test == 1].count())
+print("Total Consumers                      ", train.shape[0])
+
+x_train1, x_train2, y_train1, y_train2 = train_test_split(train, test, test_size=0.5, random_state =30)
+
+
+# from imblearn.combine import SMOTETomek
+# smtom = SMOTETomek(random_state=139)
+# x_train11, y_train11 = smtom.fit_resample(x_train1, y_train1)
+
+# smtom1 = SMOTETomek(random_state=139)
+# x_train22, y_train22 = smtom1.fit_resample(x_train2, y_train2)
+
+from sklearn.ensemble import RandomForestRegressor
+# # rf = RandomForestClassifier(n_estimators=15 , criterion='gini', min_samples_split=7,min_samples_leaf=5)
+# rf1 = RandomForestRegressor(n_estimators=15,max_depth=7)
+# rf1.fit(train,test)
+
+# rf2 = RandomForestRegressor(n_estimators=15,max_depth=7)
+# rf2.fit(x_train1,y_train1)
+
+# rf1_pred = rf1.predict(xval_test)
+# rf1_pred_=rf1_pred>0.5
+# results(yval_test,rf1_pred_)
+
+# rf2_pred = rf2.predict(xval_test)
+# rf2_pred_=rf2_pred>0.5
+# results(yval_test,rf2_pred_)
+
+# knn = KNeighborsRegressor(weights= 'distance', n_neighbors= 27, algorithm= 'ball_tree')
+# knn.fit(x_train1,y_train1)
+# dt = DecisionTreeClassifier(random_state=0)
+# dt.fit(x_train1,y_train1)
+
+knn = KNeighborsRegressor()
+knn.fit(x_train1,y_train1)
+# dt = DecisionTreeClassifier(random_state=0,criterion='gini', min_samples_split=7,min_samples_leaf=5)
+# dt.fit(x_train1,y_train1)
+
+
+
+from sklearn.ensemble import RandomForestRegressor
+# rf = RandomForestClassifier(n_estimators=15 , criterion='gini', min_samples_split=7,min_samples_leaf=5)
+rf = RandomForestRegressor(n_estimators=15,max_depth=7)
+rf.fit(x_train1,y_train1)
+
+
+
+# print(x_train)
+# print(y_train)
+
+# rf.score(x_test,y_test)
+
+# from sklearn.linear_model import LogisticRegression
+
+# lr = LogisticRegression()
+# lr.fit(x_train1,y_train1)
+
+# lr.score(x_test,y_test)
+
+svr = SVR()
+svr = SVR()
+svr.fit(x_train1,y_train1)
+
+# svr.score(x_test,y_test)
+
+
+
+# svc = SVC( random_state=0,gamma = 0.1, kernel='rbf',C=1,probability=True)
+# svc.fit(x_train,y_train)
+# from sklearn.ensemble import GradientBoostingRegressor
+# gbdt = GradientBoostingRegressor(n_estimators=180, max_depth=9, learning_rate=0.01)
+# gbdt = GradientBoostingRegressor()
+# gbdt.fit(x_train1,y_train1)
+
+
+# gbdt.score(x_test,y_test)
+
+# svc.score(x_test,y_test)
+
+# gbdt.score(x_test,y_test)
+
+# prediction_knn = knn.predict(x_train2)
+# prediction_lr = lr.predict(x_train2)
+
+# prediction_rf = rf.predict(x_train2)
+# prediction_svc = svr.predict(x_train2)
+# prediction_gbdt = gbdt.predict(x_train2)
+
+prediction_knn = knn.predict(x_train2)
+pred1 = prediction_knn>0.5
+results(y_train2 , pred1)
+
+prediction_rf = rf.predict(x_train2)
+pred2 = prediction_rf>0.5
+results(y_train2,pred2)
+
+prediction_svr = svr.predict(x_train2)
+pred3 = (prediction_svr>0.5)
+results(y_train2 , pred3)
+
+input3 = np.column_stack((prediction_knn,prediction_rf,prediction_svr))
+# input3 = np.column_stack((prediction_rf, prediction_svc, prediction_gbdt))
+# output = val_test
+output = y_train2
+
+
+
+# for i in range(5,100,5):
+#   pred2 = (prediction_rf>i/100)
+#   results(yval_test , pred2)
+
+# rf = RandomForestClassifier()
+# rf.fit(input3,output)
+
+# pred1 = prediction_knn>0.6
+# results(y_train2 , pred1)
+# prediction_knn = knn.predict(xval_test)
+# pred1 = prediction_knn>0.5
+# results(yval_test , pred1)
+
+# prediction_rf = rf.predict(xval_test)
+# pred2 = prediction_rf>0.5
+# results(yval_test,pred2)
+
+# prediction_svr = svr.predict(xval_test)
+# pred3 = (prediction_svr>0.5)
+# results(yval_test , pred3)
+
+# df = pd.DataFrame(input3)
+# df.to_csv("input3.csv")
+# pred3 = (prediction_svr>0.5)
+# results(yval_test , pred3)
+
+#removing erronoues value(fixing outliers)
+# for i in range(input3.shape[0]):  # outliers treatment
+#     m = input3.loc[i].mean()
+#     st = input3.loc[i].std()
+
+#     output.loc[i] = output.loc[i].mask(data.loc[i] > (m + 3 * st), other=m + 3 * st)
+#     input3.loc[i] = input3.loc[i].mask(data.loc[i] > (m + 3 * st), other=m + 3 * st)
+
+print('Artificial Neural Network:')
+    # for i in range(4,100,3):
+    #     print("Epoch:",i)
+
+    # Model creation
+model = Sequential()
+model.add(Dense(1000, input_dim=1034, activation='relu'))
+model.add(Dense(100, activation='relu'))
+model.add(Dense(100, activation='relu'))
+model.add(Dense(100, activation='relu'))
+model.add(Dense(10, activation='relu'))
+model.add(Dense(1, activation='sigmoid'))
+
+model.compile(loss=keras.losses.binary_crossentropy,
+                  optimizer='adam',
+                  metrics=['accuracy'])
+
+
+model.fit(input3,output, validation_split=0, epochs=15, shuffle=True, verbose=1)
+
+# prediction = (prediction>0.5) #for convertion of pridected value into true(1) or false(0)
+
+
+# model.summary()
+# results(yval_test, prediction)
+
+knn_output = knn.predict(xval_test)
+rf_output = rf.predict(xval_test)
+svr_output = svr.predict(xval_test)
+output_stack1 = np.column_stack((knn_output,rf_output,svr_output))
+
+# rf.score(x_test,y_test)
+# knn_output = knn.predict(xval_test)
+# lr_output = lr.predict(xval_test)
+# output_stack1 = np.column_stack((knn_output,lr_output))
+# rf_output = rf.predict(output_stack1)
+# results(yval_test , rf_output)
+
+# rf_output = rf.predict(xval_test)
+# svm_output = svr.predict(xval_test)
+# gbdt_output = gbdt.predict(xval_test)
+# output_stack1 = np.column_stack((rf_output,svm_output,gbdt_output))
+
+# results(yval_test , rf_output)
+
+pred1 = knn_output>0.5
+results(yval_test , pred1)
+
+
+pred2 = rf_output>0.5
+results(yval_test,pred2)
+
+
+pred3 = (svr_output>0.5)
+results(yval_test , pred3)
+
+prediction1 = model.predict(output_stack1)
+
+prediction = (prediction1>0.5)
+
+model.summary()
+results(yval_test, prediction)
+
+# model.score(output_stack1, y_test)
+
+for i in range(0,40,2):
+  prediction = prediction1>i/100
+  results(yval_test, prediction)
+
+1/10
+
+# for i in range(len(prediction)):
+#   if(prediction[i]==True):
+#      prediction[i]=1
+#   else:
+#      prediction[i]=0
+# results(yval_test,prediction )
+
+# from sklearn.model_selection import RandomizedSearchCV
+
+# grid_pram = {
+#     'n_neighbors':[3,5,7,9,11,13,15,17,19,21,23,25,27,29],
+#     'weights': ['uniform','distance'],
+#     'algorithm': ['ball_tree','kd_tree']
+# }
+
+# grid_ccp = RandomizedSearchCV(estimator=knn ,param_distributions = grid_pram, cv = 5 , n_jobs=-1)
+#
+
+# grid_ccp.fit(xval_test,yval_test)
+
+# grid_ccp.best_params_
+
+# knn = KNeighborsClassifier()
+# knn.fit(x_train,y_test)
+
+# knn.score(x_train,y_train)
+
+# svc = SVC()
+# svc.fit(X_train,y_train)
+
+# svc.score(x_train, y_test)
+
+# predcition_knn = knn.predict(val_train)
+# predcition_svm = svc.predict(val_train)
+
+# np.cloumn_stack
+
+# !pip install mlxtend
+# import six
+# import sys
+# sys.modules['sklearn.externals.six'] = six
+
+
+# def ml_and_dl(X_train, X_test, y_train, y_test):
+
+#   from sklearn.ensemble import RandomForestClassifier
+#   from sklearn.svm import LinearSVC
+#   from sklearn.linear_model import LogisticRegression
+#   # from sklearn.ensemble.gradient_boosting import GradientBoostingClassifier
+#   from sklearn.ensemble import GradientBoostingClassifier
+# #   from sklearn.pipeline import make_pipeline
+# #   from sklearn.ensemble import StackingClassifier
+#   from mlxtend.classifier import StackingClassifier
+# #   # estimators = [
+# #   #     ('rf', RandomForestClassifier(n_estimators=10, random_state=42)),
+# #   #     ('svr', make_pipeline(
+# #   #                           LinearSVC(random_state=42)))]
+
+
+
+#   # svm = SVC(random_state=0)
+#   svm = SVC()      # gamma= 1.0/sigma
+#   lr = LogisticRegression(C=1000, max_iter=1000, n_jobs=-1, solver='newton-cg')
+#   # dt = DecisionTreeClassifier(random_state=0,criterion='guni',sample_splits=7,sample_leaves=5)
+#   # rf = RandomForestClassifier(random_state=0,criterion='guni',min_samples_split=7)
+
+#   # gbdt = GradientBoostingClassifier(n_estimators=180, max_depth=9, learning_rate=0.001)
+#   # lr = LogisticRegression(C=1000, max_iter=1000, n_jobs=-1, solver='newton-cg')
+#   ann = Sequential()
+#   ann.add(Dense(1000, input_dim=1034, activation='relu'))
+#   ann.add(Dense(100, activation='relu'))
+#   ann.add(Dense(100, activation='relu'))
+#   ann.add(Dense(100, activation='relu'))
+#   ann.add(Dense(10, activation='relu'))
+#   ann.add(Dense(1, activation='sigmoid'))
+
+#   ann.compile(loss=keras.losses.binary_crossentropy,
+#                   optimizer='adam',
+#                   metrics=['accuracy'])
+
+# #   ann=ann1()
+# #   clf = StackingClassifier(estimators=[svm,dt,lr], final_estimator=lr)
+#   clf = StackingClassifier(classifiers=[lr,svm],
+#                           use_probas=True,
+#                           average_probas=False,
+#                           meta_classifier=ann)
+#   clf.fit(X_train, y_train)
+
+#   prediction = clf.predict(X_test)
+#   prediction = (prediction>0.5) #for convertion of pridected value into true(1) or false(0)
+#   # clf.summary()
+#   results(y_test, prediction)
+
+# # ml_and_dl(X_train, X_test, y_train, y_test)
+
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
@@ -338,7 +953,7 @@ rawData1 = pd.read_csv('visualization.csv', nrows=3) #taking first 3 rows
 cols = rawData1.columns
 rawData2 = pd.read_csv('visualization.csv', skiprows=187) #removing first 189 rows
 rawData2.columns = cols
-data = pd.concat([rawData1, rawData2], ignore_index=True) #ignore_index=True to make row index number 
+data = pd.concat([rawData1, rawData2], ignore_index=True) #ignore_index=True to make row index number
                                             #continuous((0,1)+(0,1) ->form(0,1,0,1) to->(0,1,2,3))
 
 #plot 1D graph for consumer
@@ -371,7 +986,7 @@ axs[1].set_title('Consumer 40256', fontsize=16)
 axs[1].set_xlabel('Dates of Consumption')
 axs[1].set_ylabel('Consumption')
 
-#statistics for consumer 
+#statistics for consumer
 #with fraud
 fig2, axs2 = plt.subplots(2, 2)
 fig2.suptitle('Statistics for Consumers with Fraud', fontsize=18)
@@ -418,3 +1033,4 @@ axs3[1, 0].set_ylabel('Density')
 data.loc[4].describe().drop(['count']).plot(kind='bar', ax=axs3[1, 1], color='teal', grid=True)
 axs3[1, 1].set_title('Statistics', fontsize=16)
 axs3[1, 1].set_ylabel('Values')
+
